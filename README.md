@@ -1,2 +1,2 @@
 # Invoke-CloudLab
-Comparison of popular cloud platforms ease of use
+The purpose of this project is the comparison of major cloud providers in regards to administrative ease of use.
