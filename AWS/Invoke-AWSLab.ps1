@@ -50,6 +50,7 @@ Set-AWSCredentials -AccessKey $aws_access_key_id -SecretKey $aws_secret_access_k
 Initialize-AWSDefaults -ProfileName $awsprofile -Region eu-central-1
 #endregion
 
+#region Configure and launch instances
 $cidrBlocks = New-Object 'collections.generic.list[string]'
 $cidrBlocks.add("0.0.0.0/0")
 $httpRule = New-Object Amazon.EC2.Model.IpPermission
@@ -61,7 +62,13 @@ $httpgroupid = New-EC2SecurityGroup -GroupName AWSLabSecurityGroup -Description 
 Grant-EC2SecurityGroupIngress -GroupID $httpgroupid -IpPermissions $httpRule
 
 $AWSLabInstances = New-EC2Instance -InstanceType t2.micro -ImageId ami-fe408091 -MinCount 2 -MaxCount 2 -SecurityGroupId $httpgroupid
-$IPs = Get-EC2Instance -InstanceId $AWSLabInstances | select -ExpandProperty instances | select -ExpandProperty PublicIPAdress
-
+Start-Sleep -Seconds 60
+While ((Get-Ec2InstanceStatus -InstanceId $AWSLabInstances).InstanceState.Name.Value[0] -ne 'running') 
+    {
+        Start-Sleep -Seconds 30
+    }
+$IPs = ((Get-EC2Instance -InstanceId $AWSLabInstances).RunningInstance).publicipaddress
+Write-output $IPs
+#endregion
 Clear-AWSCredentials -ProfileName $awsprofile
 } # End function
