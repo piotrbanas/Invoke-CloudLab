@@ -112,7 +112,7 @@ $HTTPListener.InstancePort = 80
 $HTTPListener.LoadBalancerPort = 80
 $LaunchedInstances = Get-EC2InstanceStatus -InstanceId $AWSLabReserve
 Write-Verbose "Adding Load Balancer"
-New-ELBLoadBalancer -LoadBalancerName 'LabLoadBalancer' -Listener $HTTPListener -AvailabilityZone eu-central-1b
+New-ELBLoadBalancer -LoadBalancerName 'LabLoadBalancer' -Listener $HTTPListener -AvailabilityZone eu-central-1b -OutVariable ELB
 Write-Verbose "Registering instances with load balancer"
 Register-ELBInstanceWithLoadBalancer -LoadBalancerName 'LabLoadBalancer' -Instances $LaunchedInstances.InstanceID
 
@@ -121,7 +121,7 @@ Register-ELBInstanceWithLoadBalancer -LoadBalancerName 'LabLoadBalancer' -Instan
 $Props = @{
     Ids = $LaunchedInstances.InstanceId
     IPs = $Ips | Where-Object {$_ -ne $null}
-    LBAddress = (Get-ELBLoadBalancer).DNSName
+    LBAddress = $ELB
 }
 $global:AWSLab = New-Object -TypeName PSObject -Property $props
 Write-Verbose $AWSLab
