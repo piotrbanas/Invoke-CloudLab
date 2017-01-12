@@ -1,18 +1,19 @@
 
+
+function Invoke-AWSLab
 <#
 .Synopsis
    Launch EC2 lab
 .DESCRIPTION
-   Long description
+   Launches a simple enviroment with two load-balanced LAMP servers.
 .PARAMETER credfile
    Path to credential file. Should be in .aws\credentials format:
    [ProfileName]
    aws_access_key_id=XXXXXXX
    aws_secret_access_key=XXXXXXXX
 .EXAMPLE
-   Example of how to use this cmdlet
+   Invoke-AWSLab -credfile "$HOME\awssecret.txt
 #>
-function Invoke-AWSLab
 {
     [CmdletBinding()]
     Param
@@ -94,37 +95,39 @@ echo "<?php phpinfo(); ?>" > /var/www/html/phpinfo.php
 $UserDataB64 = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($UserData))
 Write-Verbose "Spawning instances..."
 $AWSLabReserve = New-EC2Instance -InstanceType t2.micro -ImageId ami-211ada4e -MinCount 2 -MaxCount 2 -SecurityGroupId $httpgroupid -UserData $UserDataB64 -AvailabilityZone eu-central-1b
-$LabInstanceState = $AWSLabReserve.RunningInstance[0]
+$SingleInstanceState = $AWSLabReserve.RunningInstance[0]
 Start-Sleep -Seconds 60
-While ((Get-Ec2InstanceStatus -InstanceId $LabInstanceState.InstanceId).InstanceState.Name -ne 'running') 
+While ((Get-Ec2InstanceStatus -InstanceId $SingleInstanceState.InstanceId).InstanceState.Name -ne 'running') 
     {
+        Write-Verobse "Waiting for Instance to become available..."
         Start-Sleep -Seconds 30
-        $LabInstanceState = (Get-EC2Instance -Instance $LabInstanceState.InstanceID).RunningInstance[0]
+        $SingleInstanceState = (Get-EC2Instance -Instance $SingleInstanceState.InstanceID).RunningInstance[0]
     }
-$IPs = ((Get-EC2Instance -InstanceId $AWSLabInstances).RunningInstance).publicipaddress
+$IPs = ((Get-EC2Instance -InstanceId $AWSLabReserve).RunningInstance).publicipaddress
 #endregion
 #region load balancer
 $HTTPListener = New-Object -TypeName ‘Amazon.ElasticLoadBalancing.Model.Listener’
 $HTTPListener.Protocol = ‘http’
 $HTTPListener.InstancePort = 80
 $HTTPListener.LoadBalancerPort = 80
-$LaunchedInstances = Get-EC2InstanceStatus -InstanceId $AWSLabInstances
+$LaunchedInstances = Get-EC2InstanceStatus -InstanceId $AWSLabReserve
+Write-Verbose "Adding Load Balancer"
 New-ELBLoadBalancer -LoadBalancerName 'LabLoadBalancer' -Listener $HTTPListener -AvailabilityZone eu-central-1b
+Write-Verbose "Registering instances with load balancer"
 Register-ELBInstanceWithLoadBalancer -LoadBalancerName 'LabLoadBalancer' -Instances $LaunchedInstances.InstanceID
 
 
 #endregion
-Clear-AWSCredentials -ProfileName $awsprofile
-
 $Props = @{
-    IPs = $Ips
+    Ids = $LaunchedInstances.InstanceId
+    IPs = $Ips | Where-Object {$_ -ne $null}
     LBAddress = (Get-ELBLoadBalancer).DNSName
 }
-$AWSLab = New-Object -TypeName PSObject -Property $props
-
+$global:AWSLab = New-Object -TypeName PSObject -Property $props
+Write-Verbose $AWSLab
 } # End function
 
 Function Remove-AWSLab {
     Remove-ELBLoadBalancer -LoadBalancerName 'LabLoadBalancer' -force
-    Get-EC2Instance | Remove-EC2Instance -force
+    Get-EC2Instance -InstanceId $AWSLab.Ids | Remove-EC2Instance -force
 }
