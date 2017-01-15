@@ -28,7 +28,7 @@ function Invoke-CloudLab
         [parameter(
                    Position=1)]
         [ValidateScript({Test-Path $_})]
-        [String]$CredFile = "$PSScriptRoot\$Cloud\$cloud"+'Cred.txt'
+        [String]$CredFile
     )
 
 # dot-sourcing scripts
@@ -39,6 +39,7 @@ function Invoke-CloudLab
 Switch ($cloud) {
     "AWS" {
         Invoke-AWSLab -credfile $Credfile
+        . $PSScriptRoot .\Tests\Invoke-CloudLab.tests.ps1 -VMIPs $AWSLab.IPs -loadbalanceruri $AWSLab.LBAddress
     }
     "Azure" {
         Invoke-AzureLab -credfile $Credfile
@@ -47,4 +48,6 @@ Switch ($cloud) {
         Invoke-DOLab -credfile $CredFile
     }
 }
+
+
 }
