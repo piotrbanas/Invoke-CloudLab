@@ -2,7 +2,7 @@
     [String]$loadbalanceruri,
     [string[]]$vmIPs
 )
-
+Clear-DnsClientCache
 Describe "Answers from individual VM IPs" {
     Context "Http server" {
         $vmIPs | ForEach-Object {

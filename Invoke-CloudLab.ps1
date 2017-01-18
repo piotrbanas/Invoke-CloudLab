@@ -25,10 +25,10 @@ function Invoke-CloudLab
         [String]$Cloud,
 
         # Credential file path
-        [parameter(
-                   Position=1)]
+        [parameter(Position=1)]
         [ValidateScript({Test-Path $_})]
-        [String]$CredFile
+        [AllowEmptyString()]
+        [String]$CredFile = $null
     )
 
 # dot-sourcing scripts
@@ -38,11 +38,12 @@ function Invoke-CloudLab
 
 Switch ($cloud) {
     "AWS" {
-        Invoke-AWSLab -credfile $Credfile
-        . $PSScriptRoot .\Tests\Invoke-CloudLab.tests.ps1 -VMIPs $AWSLab.IPs -loadbalanceruri $AWSLab.LBAddress
+        if ($credfile){Invoke-AWSLab -credfile $Credfile} else {Invoke-AWSLab}
+        $AWSLab = Import-Clixml $PSScriptroot\AWS\awslab.xml
+        .$PSScriptRoot\Tests\Invoke-CloudLab.tests.ps1 -VMIPs $AWSLab.IPs -loadbalanceruri $AWSLab.LBAddress
     }
     "Azure" {
-        Invoke-AzureLab -credfile $Credfile
+        Invoke-AzureLab
     }
     "DO" {
         Invoke-DOLab -credfile $CredFile

@@ -12,12 +12,13 @@ $subs = Get-AzureRmSubscription
 
 $azureAppObjectProperties = @{
     Name = 'Azure Test Lab'
-    Password = $password
+    Password = ConvertTo-SecureString $password -AsPlainText -Force | ConvertFrom-SecureString
     ApplicationId = $app.ApplicationId
     TenantId = $subs.TenantId
     }
 
-New-Object -TypeName psobject -Property $azureAppObjectProperties
+New-Object -TypeName psobject -Property $azureAppObjectProperties | Export-Clixml -path $home\azureLabApp.xml
+
 
 } # end function
 
@@ -27,6 +28,7 @@ function Test-IsAdmin {
 
 Function Invoke-AzureLab {
 
+#region Azurerm module
 Import-module Azurerm
 If (! (Get-module Azurerm)) {
     if (!(Test-IsAdmin)){
@@ -40,16 +42,21 @@ If (! (Get-module Azurerm)) {
         Catch { Throw $Error }
     }
 } # End if
-
-$azureAuthfile = "$HOME\azureAuth.txt"
+#endregion
+#region building credentials
+$azureAuthfile = "$HOME\azureLabApp.xml"
 if (!(Test-Path $azureAuthfile)) {
     $azureAppObject = Register-AzureApp
-    ConvertTo-SecureString $azureAppObject.password -AsPlainText -Force | ConvertFrom-SecureString | Out-File $azureAuthfile 
 }
+$azureAppObject = Import-Clixml $home\azureLabApp.xml
 $azureuser = $azureAppObject.ApplicationId.ToString()
-$azurepasss = Get-Content -Path $azureAuthfile | ConvertTo-SecureString
+$azurepasss = $azureAppObject.Password | ConvertTo-SecureString
 $azureCred = new-object System.Management.Automation.PSCredential($azureuser, $azurepasss)
 
 Add-AzureRmAccount -Credential $azureCred -TenantId $azureAppObject.TenantId -ServicePrincipal
+#endregion
+
+
+
 
 } # end invoke-AzureTestLab

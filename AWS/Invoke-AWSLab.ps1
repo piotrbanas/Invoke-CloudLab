@@ -123,11 +123,14 @@ $Props = @{
     IPs = $Ips | Where-Object {$_ -ne $null}
     LBAddress = $ELB
 }
-$global:AWSLab = New-Object -TypeName PSObject -Property $props
+$AWSLab = New-Object -TypeName PSObject -Property $props
 Write-Verbose $AWSLab
+$AWSLab | Export-Clixml (Join-path $PSScriptRoot awslab.xml)
 } # End function
 
 Function Remove-AWSLab {
+    $AWSLab = Import-Clixml '.\AWS\awslab.xml'
     Remove-ELBLoadBalancer -LoadBalancerName 'LabLoadBalancer' -force
     Get-EC2Instance -InstanceId $AWSLab.Ids | Remove-EC2Instance -force
+    Remove-Item .\AWS\awslab.xml
 }
